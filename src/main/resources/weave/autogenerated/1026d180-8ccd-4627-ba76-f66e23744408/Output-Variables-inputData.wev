@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_1026d180_8ccd_4627_ba76_f66e23744408_Output_Variables_inputData = {| queryparams: Null |}
+

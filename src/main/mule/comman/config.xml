@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd 
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+	 <http:listener-config name="transaction-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="transaction-api-config" api="resource::5e1a075b-40e3-4f73-a24c-52a7bf2e5eb8:transaction-api:1.0.0:raml:zip:transaction-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+	<configuration doc:name="Configuration" doc:id="29b6748e-20fe-4299-9a34-fdb530900052" defaultErrorHandler-ref="global-apikit-erro_Handler" />
+    
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="4adc6d95-085a-464d-bc3f-db96d4a0a229" >
+		<db:my-sql-connection host="b4qi10m6jtplv7e7fgfv-mysql.services.clever-cloud.com" port="3306" user="uji3yqdlyzbqadtu" password="xidtsmUmJsX7OUOnf4w4" database="b4qi10m6jtplv7e7fgfv" />
+	</db:config>
+	
+		<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="a0a03a0a-da82-48c3-aec2-676b6491dbc6" >
+		<email:smtps-connection host="smtp.gmail.com" user="pomanju4@gmail.com" password="lmiaqvapuyawksoj">
+			<tls:context>
+			<tls:trust-store insecure="true"/>
+			</tls:context>
+			<email:properties>
+			<email:property key="mail.smtp.starttls.enable" value="true"/>
+			</email:properties>
+		</email:smtps-connection>
+	</email:smtp-config>
+</mule>

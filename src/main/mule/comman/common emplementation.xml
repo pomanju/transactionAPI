@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<sub-flow name="common_emplementation_Sub_Flow" doc:id="26f48638-f9b6-417d-babf-ab12068d2fd0" >
+		<ee:transform doc:name="Transform Message" doc:id="70541086-d39e-4dee-8867-e0ec7eeea147" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="inputData" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"queryparams": message.attributes.queryParams
+}]]></ee:set-variable>
+				<ee:set-variable variableName="InputPayload" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="get_account_detail_subflow" doc:id="e7e21d8a-9fbc-4348-9834-af9b3d8c568c" >
+		<logger level="INFO" doc:name="Logger" doc:id="ca5a7d14-0d84-4a63-9a83-7d2da07a849a" message="logger before database select operation"/>
+		<db:select doc:name="Select" doc:id="628e4b77-e995-4bee-8243-f321695536c3" config-ref="Database_Config">
+			<db:sql ><![CDATA[#["SELECT `pk`, `custName`, `custAccNum`, `atmPin`, `bankName`, `accountType`, `ifscCode`, `branchName`, `totalBalance`, `transactionTimeStamp`, `accountStatus`, `wrongPin`, `mailId`, `phoneNumber` FROM `Bank_Transactions`"]]]></db:sql>
+		</db:select>
+		<logger level="INFO" doc:name="Logger" doc:id="37e8af5a-7b72-41c5-8238-82fe445da58e" message="logger after database select operation"/>
+	</sub-flow>
+	<sub-flow name="atmPin_verification_subflow" doc:id="1026d180-8ccd-4627-ba76-f66e23744408" >
+		<choice doc:name="Choice" doc:id="24d5db53-2610-460d-bba6-b90b62d9b236" >
+			<when expression="#[payload.atmPin[0] ==  vars.inputPayload.atmPin]">
+				<flow-ref doc:name="withdraw_update_subflow" doc:id="cb8d6a7f-ca80-4805-a9c2-646fd22a4db9" name="withdraw_update_subflow"/>
+			</when>
+			<otherwise >
+				<flow-ref doc:name="wrongPin_implementationSub_Flow" doc:id="437a6c9e-f65b-4e73-acaf-d17f7446a6de" name="wrongPin_implementationSub_Flow"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="wrongPin_implementationSub_Flow" doc:id="5a93e810-02e2-490b-9153-bea83c9e3693" >
+		<choice doc:name="Choice" doc:id="0cb17580-2fd2-4cc3-89ea-f860bdb9ee89" >
+			<when expression="#[payload.wrongPin[0] == 3]">
+				<db:update doc:name="Update" doc:id="65bbfb0e-2ce4-4b88-916a-116f626b9b5b" config-ref="Database_Config" target="accountBlocked">
+					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Blocked"]]></db:sql>
+				</db:update>
+				<email:send doc:name="Send" doc:id="5c940a1b-ce43-4b90-8560-1b2b1cefa7b9" config-ref="Email_SMTP" fromAddress="pomanju4@gmail.com" subject="Account Blocked !">
+					<email:to-addresses>
+						<email:to-address value="#[payload.mailId[0]]" />
+					</email:to-addresses>
+					<email:body>
+						<email:content><![CDATA[#["This is to inform you that Your Account has been be blocked due to 3 failed attempts. Please reach out nearest branch to unblock"]]]></email:content>
+					</email:body>
+				</email:send>
+				<ee:transform doc:name="Transform Message" doc:id="aa9fa633-a500-49f0-955a-e84a8d06cfee" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Maximum Attempts reached .Your Account " ++ vars.InputPayload.accountNum++" is 
+temporarily blocked. Please reach nearest Branch"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="8dd08f94-bc32-448d-82f0-85ea45676fcf">
+					<ee:message>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="wrongPinCountIncrease" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.wrongPin[0]+1]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<db:update doc:name="Update" doc:id="2877a72f-c6cb-4546-ac9c-8ccb0a63df54" config-ref="Database_Config" target="wroingpingcount">
+					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `wrongPin`= :wrongpin]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	"wrongpin": vars.wrongPinCountIncrease
+}]]]></db:input-parameters>
+				</db:update>
+				<email:send doc:name="Send" doc:id="47c46e3f-e0ed-4a33-880c-0b6b8de86724" config-ref="Email_SMTP" fromAddress="pomanju4@gmail.com" subject="Failed Attempt ! ">
+					<email:to-addresses>
+						<email:to-address value="#[payload.mailId[0]]" />
+					</email:to-addresses>
+					<email:body>
+						<email:content><![CDATA[#["This is to inform you that there’s a failed attempt happened while transaction . Your Account will be blocked after 3 attempts"]]]></email:content>
+					</email:body>
+				</email:send>
+				<ee:transform doc:name="Transform Message" doc:id="f9427a29-9613-4020-874c-91297c9624ac" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Login Attempt Failed .Attempts 
+left : "++ (3-vars.wrongPinCountIncrease) as String]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="withdraw_update_subflow" doc:id="edf285c7-f8e8-47c0-a538-b539fa9f26a9" >
+		<choice doc:name="Choice" doc:id="8d943f53-dc09-423f-a285-223a8b271301" >
+			<when expression="#[payload.totalBalance[0] &gt; vars.InputPayload.amountToBeWithdraw]">
+				<db:update doc:name="Update" doc:id="95f8a57c-39a8-45fa-b286-849eb3ed7938" config-ref="Database_Config" target="withdraw">
+					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `totalBalance`= (:totalBalance)-(:withdrawamount)]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	"totalBalance": payload.totalBalance[0],
+	"withdrawamount": vars.InputPayload.amountToBeWithdraw
+
+}]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="Transform Message" doc:id="c0e8f27b-4789-4986-b3f9-725b2fab9e93" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "status": "Amount " ++ vars.inputPayload.amountToBeWithdraw as String ++" is debited . Your total balance is" ++ (payload.totalBalance - vars.inputPayload.amountToBeWithdraw) as String}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="7c1f7ced-4f1b-404f-9167-66e20c632550" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Insufficient Funds"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+</mule>

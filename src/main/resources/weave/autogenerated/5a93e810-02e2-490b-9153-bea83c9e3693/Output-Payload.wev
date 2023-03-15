@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_5a93e810_02e2_490b_9153_bea83c9e3693_Output_Payload = Array<{|  pk: Number,   custName: String,   custAccNum: String,   atmPin: String,   bankName: String,   accountType: String,   ifscCode: String,   branchName: String,   totalBalance: Number,   transactionTimeStamp: String,   accountStatus: String,   wrongPin?: Number,   mailId: String,   phoneNumber: String|}>
+

@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+   
+
+	<flow name="transaction-api-main">
+        <http:listener config-ref="transaction-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="transaction-api-config" />
+        <error-handler ref="global-apikit-erro_Handler">
+            
+        </error-handler>
+    </flow>
+    <flow name="transaction-api-console">
+        <http:listener config-ref="transaction-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="transaction-api-config" />
+        <error-handler ref="global-apikit-erro_Handler">
+
+        </error-handler>
+    </flow>
+    <flow name="put:\unblock:application\json:transaction-api-config">
+		<flow-ref doc:name="common_emplementation_Sub_Flow" doc:id="db728546-47eb-4958-bcf4-d2aa60e70888" name="common_emplementation_Sub_Flow"/>
+		<flow-ref doc:name="get_account_detail_subflow" doc:id="afabddee-3634-48fa-aca5-a3d80cce827d" name="get_account_detail_subflow"/>
+		<ee:transform doc:name="Transform Message" doc:id="f7ea837f-b757-45d1-8700-8ef737676dd4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == vars.InputPayload.bank)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="e99e453f-f9d9-4942-ba03-6a4b46edbf3b" >
+			<when expression='#[(vars.InputPayload.user == "admin" and vars.InputPayload.password== "admin") and (!isEmpty(payload))]'>
+				<choice doc:name="Choice" doc:id="b620f11f-9e1b-4bad-8213-6cc741a49cde" >
+					<when expression='#[payload.accountStatus[0] == "Active"]'>
+						<ee:transform doc:name="Transform Message" doc:id="4cece668-2292-4523-af0b-2b9ccef32907" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Account " ++ vars.InputPayload.accountNum++" is Active."]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</when>
+					<otherwise >
+						<db:update doc:name="Update" doc:id="8145bd42-cc36-466b-92d6-e912c799f3eb" config-ref="Database_Config">
+							<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Active", `wrongPin`= 0]]></db:sql>
+						</db:update>
+						<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "status" : "Account " ++ vars.InputPayload.accountNum ++ "is unblocked"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="02fc0801-f75d-4408-b67b-a97b8afd62d1" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Account " ++ vars.InputPayload.accountNum ++" does not exist . 
+Enter Valid Details"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+    </flow>
+    <flow name="post:\checkBalance:application\json:transaction-api-config">
+        <flow-ref doc:name="common_emplementation_Sub_Flow" doc:id="6d124bb5-4031-4bd7-bf2c-9b2dcd8463a6" name="common_emplementation_Sub_Flow"/>
+		<flow-ref doc:name="get_account_detail_subflow" doc:id="bf569466-31df-42eb-bf71-3c041035d0d7" name="get_account_detail_subflow"/>
+		<ee:transform doc:name="Transform Message1" doc:id="e8a8092f-0e38-4715-93b4-e7847947e746">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == vars.InputPayload.bank)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="472f8c29-b3ff-48a8-b52c-be337fae6634" >
+			<when expression="#[!isEmpty(payload)]">
+				<choice doc:name="Choice" doc:id="37055532-2654-43da-beff-929919fc4883" >
+					<when expression='#[payload.accountStatus[0]=="Active"]'>
+						<flow-ref doc:name="atmPin_verification_subflow" doc:id="79c0767d-d9a5-41e8-bf85-7aa93994fbf5" name="atmPin_verification_subflow"/>
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Transform Message" doc:id="4ea12b64-7342-4f94-af70-a390664c8aad" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Account "++ vars.InputPayload.accountNum ++ " temporarily blocked. Please visit 
+nearest Branch"]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="b9a7bfd8-53c9-4bcd-aa39-63e098aaeb72" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Account "++ vars.InputPayload.accountNum ++ " does not exist . 
+Enter Valid Details"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+    </flow>
+    <flow name="post:\createAccount:application\json:transaction-api-config">
+        <flow-ref doc:name="common_emplementation_Sub_Flow" doc:id="7f50dfc9-936c-46dc-a1bf-5eaabe227f7f" name="common_emplementation_Sub_Flow"/>
+		<flow-ref doc:name="get_account_detail_subflow" doc:id="35014233-aec1-4ee3-8108-07f2c8fc06e3" name="get_account_detail_subflow"/>
+		<choice doc:name="Choice" doc:id="b87f219a-85d9-44e0-8a2b-bdee9824f62f" >
+			<when expression="#[(payload.custAccNum contains (vars.InputPayload.accountNum)) and (payload.bankName contains(vars.inputData.queryparams.bank))]">
+				<ee:transform doc:name="Transform Message" doc:id="c7e93338-7677-4927-8a86-9a255c1a3100" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Account "++ vars.InputPayload.accountNum ++ " already exist"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="ab33c70d-70fc-4b7f-8fb4-492b3c55ceb9">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"custName": vars.inputData.queryparams.customerName,
+	"custAccNum": vars.inputPayload.accountNum,
+	"atmPin": vars.inputPayload.atmPin,
+	"bankName": vars.inputData.queryparams.bank,
+	"accountType": vars.inputData.queryparams."type",
+	"ifscCode": vars.inputPayload.ifscCode,
+	"branchName": vars.inputData.queryparams.branchName,
+	"totalBalance": if (vars.inputPayload.depositAmount == null or vars.inputPayload.depositAmount== "") 0 else vars.inputPayload.depositAmount,
+	"transactionTimeStamp": now(),
+	"accountStatus": "Active",
+	"wrongPin": 0,
+	"mailId": vars.inputPayload.mailId,
+	"phoneNumber": vars.inputPayload.contact,
+	
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<db:insert doc:name="Insert" doc:id="05aac1b5-b03b-45c7-8466-0669e0ce258e" config-ref="Database_Config">
+			<db:sql><![CDATA[INSERT INTO `Bank_Transactions`(`custName`, `custAccNum`, `atmPin`, `bankName`, `accountType`, `ifscCode`, `branchName`, `totalBalance`, `transactionTimeStamp`, `accountStatus`, `wrongPin`, `mailId`, `phoneNumber`) VALUES (:custName,:custAccNum,:atmPin,:bankName,:accountType,:ifscCode,:branchName,:totalBalance,:transactionTimeStamp,:accountStatus,:wrongPin,:mailId,:phoneNumber)]]></db:sql>
+			<db:input-parameters><![CDATA[#[payload]]]></db:input-parameters>
+		</db:insert>
+				<email:send doc:name="Send" doc:id="0dd94afd-4e2e-46a1-8c72-897cf51dc9d9" config-ref="Email_SMTP" fromAddress="pomanju4@gmail.com" subject="Congratulations ! Account created">
+					<email:to-addresses >
+						<email:to-address value="#[vars.inputPayload.mailId]" />
+					</email:to-addresses>
+					<email:body >
+						<email:content ><![CDATA[#["Congratulations ! Your account is created Successfully with Account Number "++ vars.inputPayload.accountNum ++" with ICICI Bank."]]]></email:content>
+					</email:body>
+				</email:send>
+				<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  status: "Account Created Successfully with Account Number " ++ vars.InputPayload.accountNum}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="15b71ab7-1cfe-4f9e-96a9-694234aecb22" type="DB:CONNECTIVITY, EMAIL:CONNECTIVITY">
+				<ee:transform doc:name="Transform Message" doc:id="927c919a-fd11-4fef-93fd-03e0dc68e06b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Connection failed"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+    </flow>
+    <flow name="post:\withDraw:application\json:transaction-api-config">
+        <flow-ref doc:name="common_emplementation_Sub_Flow" doc:id="b8897f1f-885f-467d-89e8-e79e34077481" name="common_emplementation_Sub_Flow"/>
+		<flow-ref doc:name="get_account_detail_subflow" doc:id="e8375c1e-9393-4a48-959f-fd44bd508f45" name="get_account_detail_subflow"/>
+		<ee:transform doc:name="Transform Message1" doc:id="2a290f22-540c-4a66-82b4-052d751418a7">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == vars.InputPayload.bank)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="a6c8f4a1-5e80-4dce-a9ca-850ad0771893" >
+			<when expression="#[!isEmpty(payload)]" >
+				<choice doc:name="Choice" doc:id="e9f46de0-6b7c-4201-899f-b4aac90183fd" >
+					<when expression='#[payload.accountStatus[0]=="Active"]' >
+						<flow-ref doc:name="atmPin_verification_subflow" doc:id="2a5c5860-5af6-4e36-9bd5-daea97c9ac51" name="atmPin_verification_subflow" />
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Transform Message" doc:id="1153164d-790c-4341-a9a2-1e5db660166d" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Account "++ vars.InputPayload.accountNum ++ " temporarily blocked. Please visit 
+nearest Branch"]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="30deb6f9-19a2-4700-be15-fad2aa10cd0a" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"Account "++ vars.InputPayload.accountNum ++ " does not exist . 
+Enter Valid Details"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+    </flow>
+</mule>
