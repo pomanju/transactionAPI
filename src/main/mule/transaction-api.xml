@@ -108,7 +108,7 @@ payload filter ($.custAccNum==vars.inputPayload.accountNum and $.bankName == var
 			<when expression="#[!isEmpty(payload)]">
 				<choice doc:name="Choice" doc:id="37055532-2654-43da-beff-929919fc4883" >
 					<when expression='#[payload.accountStatus[0]=="Active"]'>
-						<flow-ref doc:name="atmPin_verification_subflow" doc:id="79c0767d-d9a5-41e8-bf85-7aa93994fbf5" name="atmPin_verification_subflow"/>
+						<flow-ref doc:name="withdraw_atmPin_verification_subflow" doc:id="79c0767d-d9a5-41e8-bf85-7aa93994fbf5" name="withdraw_atmPin_verification_subflow"/>
 					</when>
 					<otherwise >
 						<ee:transform doc:name="Transform Message" doc:id="4ea12b64-7342-4f94-af70-a390664c8aad" >
@@ -218,7 +218,7 @@ payload filter ($.custAccNum==vars.inputPayload.accountNum and $.bankName == var
 			<when expression="#[!isEmpty(payload)]" >
 				<choice doc:name="Choice" doc:id="e9f46de0-6b7c-4201-899f-b4aac90183fd" >
 					<when expression='#[payload.accountStatus[0]=="Active"]' >
-						<flow-ref doc:name="atmPin_verification_subflow" doc:id="2a5c5860-5af6-4e36-9bd5-daea97c9ac51" name="atmPin_verification_subflow" />
+						<flow-ref doc:name="withdraw_atmPin_verification_subflow" doc:id="2a5c5860-5af6-4e36-9bd5-daea97c9ac51" name="withdraw_atmPin_verification_subflow" />
 					</when>
 					<otherwise >
 						<ee:transform doc:name="Transform Message" doc:id="1153164d-790c-4341-a9a2-1e5db660166d" >

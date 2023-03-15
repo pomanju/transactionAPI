@@ -31,13 +31,32 @@ payload]]></ee:set-variable>
 		</db:select>
 		<logger level="INFO" doc:name="Logger" doc:id="37e8af5a-7b72-41c5-8238-82fe445da58e" message="logger after database select operation"/>
 	</sub-flow>
-	<sub-flow name="atmPin_verification_subflow" doc:id="1026d180-8ccd-4627-ba76-f66e23744408" >
+	<sub-flow name="withdraw_atmPin_verification_subflow" doc:id="1026d180-8ccd-4627-ba76-f66e23744408" >
 		<choice doc:name="Choice" doc:id="24d5db53-2610-460d-bba6-b90b62d9b236" >
 			<when expression="#[payload.atmPin[0] ==  vars.inputPayload.atmPin]">
 				<flow-ref doc:name="withdraw_update_subflow" doc:id="cb8d6a7f-ca80-4805-a9c2-646fd22a4db9" name="withdraw_update_subflow"/>
 			</when>
 			<otherwise >
 				<flow-ref doc:name="wrongPin_implementationSub_Flow" doc:id="437a6c9e-f65b-4e73-acaf-d17f7446a6de" name="wrongPin_implementationSub_Flow"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="checkbalance_emplementationSub_Flow" doc:id="e80ed764-4542-4619-a91f-c9d7b683cc39" >
+		<choice doc:name="Choice" doc:id="942f3de2-2a7a-46c9-9344-bc0aee7979c0" >
+			<when expression="#[payload.atmPin[0] ==  vars.inputPayload.atmPin]" >
+				<ee:transform doc:name="Transform Message" doc:id="be38a81b-fd76-487f-99d4-863fd61c537b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"status": "Your total balance is " ++ payload.totalBalance as String ++ "as on " ++ now() as String {format: "dd-MMMM-yyyy"}
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<flow-ref doc:name="wrongPin_implementationSub_Flow" doc:id="099b3b33-d745-42a8-b00a-0aea9e02f56c" name="wrongPin_implementationSub_Flow" />
 			</otherwise>
 		</choice>
 	</sub-flow>
