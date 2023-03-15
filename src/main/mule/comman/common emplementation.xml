@@ -42,8 +42,18 @@ payload]]></ee:set-variable>
 		</choice>
 	</sub-flow>
 	<sub-flow name="wrongPin_implementationSub_Flow" doc:id="5a93e810-02e2-490b-9153-bea83c9e3693" >
+		<ee:transform doc:name="Transform Message" doc:id="8dd08f94-bc32-448d-82f0-85ea45676fcf">
+					<ee:message>
+					</ee:message>
+					<ee:variables>
+				<ee:set-variable variableName="wrongPinCountIncrease" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.wrongPin[0]+1]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
 		<choice doc:name="Choice" doc:id="0cb17580-2fd2-4cc3-89ea-f860bdb9ee89" >
-			<when expression="#[payload.wrongPin[0] == 3]">
+			<when expression="#[vars.wrongPinCountIncrease == 3]">
 				<db:update doc:name="Update" doc:id="65bbfb0e-2ce4-4b88-916a-116f626b9b5b" config-ref="Database_Config" target="accountBlocked">
 					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Blocked" where `custAccNum`= :custAccNum]]></db:sql>
 					<db:input-parameters ><![CDATA[#[{
@@ -69,16 +79,6 @@ temporarily blocked. Please reach nearest Branch"]]></ee:set-payload>
 				</ee:transform>
 			</when>
 			<otherwise >
-				<ee:transform doc:name="Transform Message" doc:id="8dd08f94-bc32-448d-82f0-85ea45676fcf">
-					<ee:message>
-					</ee:message>
-					<ee:variables >
-						<ee:set-variable variableName="wrongPinCountIncrease" ><![CDATA[%dw 2.0
-output application/json
----
-payload.wrongPin[0]+1]]></ee:set-variable>
-					</ee:variables>
-				</ee:transform>
 				<db:update doc:name="Update" doc:id="2877a72f-c6cb-4546-ac9c-8ccb0a63df54" config-ref="Database_Config" target="wroingpingcount">
 					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `wrongPin`= :wrongpin where `custAccNum`= :custAccNum]]></db:sql>
 					<db:input-parameters ><![CDATA[#[{
