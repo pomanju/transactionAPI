@@ -63,7 +63,7 @@ output application/json
 						<db:update doc:name="Update" doc:id="8145bd42-cc36-466b-92d6-e912c799f3eb" config-ref="Database_Config">
 							<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Active", `wrongPin`= 0 where `custAccNum`= :custAccNum]]></db:sql>
 							<db:input-parameters ><![CDATA[#[{
-	"custAccNum": vars.inputData.accountNum
+	"custAccNum": vars.inputPayload.accountNum
 }]]]></db:input-parameters>
 						</db:update>
 						<ee:transform>

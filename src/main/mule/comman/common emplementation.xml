@@ -57,7 +57,8 @@ payload.wrongPin[0]+1]]></ee:set-variable>
 				<db:update doc:name="Update" doc:id="65bbfb0e-2ce4-4b88-916a-116f626b9b5b" config-ref="Database_Config" target="accountBlocked">
 					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Blocked" where `custAccNum`= :custAccNum]]></db:sql>
 					<db:input-parameters ><![CDATA[#[{
-	"custAccNum": vars.inputData.accountNum
+	"custAccNum": vars.inputPayload.accountNum,
+	"wrongPin": vars.wrongPinCountIncrease
 }]]]></db:input-parameters>
 				</db:update>
 				<email:send doc:name="Send" doc:id="5c940a1b-ce43-4b90-8560-1b2b1cefa7b9" config-ref="Email_SMTP" fromAddress="pomanju4@gmail.com" subject="Account Blocked !">
@@ -83,7 +84,7 @@ temporarily blocked. Please reach nearest Branch"]]></ee:set-payload>
 					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `wrongPin`= :wrongpin where `custAccNum`= :custAccNum]]></db:sql>
 					<db:input-parameters ><![CDATA[#[{
 	"wrongpin": vars.wrongPinCountIncrease,
-	"custAccNum": vars.inputData.accountNum
+	"custAccNum": vars.inputPayload.accountNum
 }]]]></db:input-parameters>
 				</db:update>
 				<email:send doc:name="Send" doc:id="47c46e3f-e0ed-4a33-880c-0b6b8de86724" config-ref="Email_SMTP" fromAddress="pomanju4@gmail.com" subject="Failed Attempt ! ">
