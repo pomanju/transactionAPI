@@ -17,7 +17,7 @@ output application/java
 {
 	"queryparams": message.attributes.queryParams
 }]]></ee:set-variable>
-				<ee:set-variable variableName="InputPayload" ><![CDATA[%dw 2.0
+				<ee:set-variable variableName="inputPayload" ><![CDATA[%dw 2.0
 output application/json
 ---
 payload]]></ee:set-variable>
@@ -45,7 +45,10 @@ payload]]></ee:set-variable>
 		<choice doc:name="Choice" doc:id="0cb17580-2fd2-4cc3-89ea-f860bdb9ee89" >
 			<when expression="#[payload.wrongPin[0] == 3]">
 				<db:update doc:name="Update" doc:id="65bbfb0e-2ce4-4b88-916a-116f626b9b5b" config-ref="Database_Config" target="accountBlocked">
-					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Blocked"]]></db:sql>
+					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Blocked" where `custAccNum`= :custAccNum]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	"custAccNum": vars.inputData.accountNum
+}]]]></db:input-parameters>
 				</db:update>
 				<email:send doc:name="Send" doc:id="5c940a1b-ce43-4b90-8560-1b2b1cefa7b9" config-ref="Email_SMTP" fromAddress="pomanju4@gmail.com" subject="Account Blocked !">
 					<email:to-addresses>
@@ -60,7 +63,7 @@ payload]]></ee:set-variable>
 						<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-"Maximum Attempts reached .Your Account " ++ vars.InputPayload.accountNum++" is 
+"Maximum Attempts reached .Your Account " ++ vars.inputPayload.accountNum++" is 
 temporarily blocked. Please reach nearest Branch"]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
@@ -77,9 +80,10 @@ payload.wrongPin[0]+1]]></ee:set-variable>
 					</ee:variables>
 				</ee:transform>
 				<db:update doc:name="Update" doc:id="2877a72f-c6cb-4546-ac9c-8ccb0a63df54" config-ref="Database_Config" target="wroingpingcount">
-					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `wrongPin`= :wrongpin]]></db:sql>
+					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `wrongPin`= :wrongpin where `custAccNum`= :custAccNum]]></db:sql>
 					<db:input-parameters ><![CDATA[#[{
-	"wrongpin": vars.wrongPinCountIncrease
+	"wrongpin": vars.wrongPinCountIncrease,
+	"custAccNum": vars.inputData.accountNum
 }]]]></db:input-parameters>
 				</db:update>
 				<email:send doc:name="Send" doc:id="47c46e3f-e0ed-4a33-880c-0b6b8de86724" config-ref="Email_SMTP" fromAddress="pomanju4@gmail.com" subject="Failed Attempt ! ">
@@ -104,12 +108,13 @@ left : "++ (3-vars.wrongPinCountIncrease) as String]]></ee:set-payload>
 	</sub-flow>
 	<sub-flow name="withdraw_update_subflow" doc:id="edf285c7-f8e8-47c0-a538-b539fa9f26a9" >
 		<choice doc:name="Choice" doc:id="8d943f53-dc09-423f-a285-223a8b271301" >
-			<when expression="#[payload.totalBalance[0] &gt; vars.InputPayload.amountToBeWithdraw]">
+			<when expression="#[payload.totalBalance[0] &gt; vars.inputPayload.amountToBeWithdraw]">
 				<db:update doc:name="Update" doc:id="95f8a57c-39a8-45fa-b286-849eb3ed7938" config-ref="Database_Config" target="withdraw">
-					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `totalBalance`= (:totalBalance)-(:withdrawamount)]]></db:sql>
+					<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `totalBalance`= (:totalBalance)-(:withdrawamount) where `custAccNum`=:custAccNum]]></db:sql>
 					<db:input-parameters ><![CDATA[#[{
 	"totalBalance": payload.totalBalance[0],
-	"withdrawamount": vars.InputPayload.amountToBeWithdraw
+	"withdrawamount": vars.inputPayload.amountToBeWithdraw,
+	"custAccNum": vars.inputPayload.accountNum
 
 }]]]></db:input-parameters>
 				</db:update>
@@ -119,7 +124,7 @@ left : "++ (3-vars.wrongPinCountIncrease) as String]]></ee:set-payload>
 output application/json
 ---
 {
-  "status": "Amount " ++ vars.inputPayload.amountToBeWithdraw as String ++" is debited . Your total balance is" ++ (payload.totalBalance - vars.inputPayload.amountToBeWithdraw) as String}]]></ee:set-payload>
+  "status": "Amount " ++ vars.inputPayload.amountToBeWithdraw as String ++" is debited . Your total balance is " ++ (payload.totalBalance[0] - vars.inputPayload.amountToBeWithdraw) as String}]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
 			</when>

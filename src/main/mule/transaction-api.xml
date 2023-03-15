@@ -43,11 +43,11 @@ http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/
 				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == vars.InputPayload.bank)]]></ee:set-payload>
+payload filter ($.custAccNum==vars.inputPayload.accountNum and $.bankName == vars.inputPayload.bank)]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 		<choice doc:name="Choice" doc:id="e99e453f-f9d9-4942-ba03-6a4b46edbf3b" >
-			<when expression='#[(vars.InputPayload.user == "admin" and vars.InputPayload.password== "admin") and (!isEmpty(payload))]'>
+			<when expression='#[(vars.inputPayload.user == "admin" and vars.inputPayload.password== "admin") and (!isEmpty(payload))]'>
 				<choice doc:name="Choice" doc:id="b620f11f-9e1b-4bad-8213-6cc741a49cde" >
 					<when expression='#[payload.accountStatus[0] == "Active"]'>
 						<ee:transform doc:name="Transform Message" doc:id="4cece668-2292-4523-af0b-2b9ccef32907" >
@@ -55,13 +55,16 @@ payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == var
 								<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-"Account " ++ vars.InputPayload.accountNum++" is Active."]]></ee:set-payload>
+"Account " ++ vars.inputPayload.accountNum++" is Active."]]></ee:set-payload>
 							</ee:message>
 						</ee:transform>
 					</when>
 					<otherwise >
 						<db:update doc:name="Update" doc:id="8145bd42-cc36-466b-92d6-e912c799f3eb" config-ref="Database_Config">
-							<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Active", `wrongPin`= 0]]></db:sql>
+							<db:sql ><![CDATA[UPDATE `Bank_Transactions` SET `accountStatus`= "Active", `wrongPin`= 0 where `custAccNum`= :custAccNum]]></db:sql>
+							<db:input-parameters ><![CDATA[#[{
+	"custAccNum": vars.inputData.accountNum
+}]]]></db:input-parameters>
 						</db:update>
 						<ee:transform>
             <ee:message>
@@ -69,7 +72,7 @@ output application/json
 output application/json
 ---
 {
-  "status" : "Account " ++ vars.InputPayload.accountNum ++ "is unblocked"
+  "status" : "Account " ++ vars.inputPayload.accountNum ++ " is unblocked"
 }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
@@ -82,12 +85,13 @@ output application/json
 						<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-"Account " ++ vars.InputPayload.accountNum ++" does not exist . 
+"Account " ++ vars.inputPayload.accountNum ++" does not exist . 
 Enter Valid Details"]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
 			</otherwise>
 		</choice>
+		<error-handler ref="global-apikit-erro_Handler" />
     </flow>
     <flow name="post:\checkBalance:application\json:transaction-api-config">
         <flow-ref doc:name="common_emplementation_Sub_Flow" doc:id="6d124bb5-4031-4bd7-bf2c-9b2dcd8463a6" name="common_emplementation_Sub_Flow"/>
@@ -97,7 +101,7 @@ Enter Valid Details"]]></ee:set-payload>
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == vars.InputPayload.bank)]]></ee:set-payload>
+payload filter ($.custAccNum==vars.inputPayload.accountNum and $.bankName == vars.inputData.queryparams.bank)]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 		<choice doc:name="Choice" doc:id="472f8c29-b3ff-48a8-b52c-be337fae6634" >
@@ -112,7 +116,7 @@ payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == var
 								<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-"Account "++ vars.InputPayload.accountNum ++ " temporarily blocked. Please visit 
+"Account "++ vars.inputPayload.accountNum ++ " temporarily blocked. Please visit 
 nearest Branch"]]></ee:set-payload>
 							</ee:message>
 						</ee:transform>
@@ -125,24 +129,25 @@ nearest Branch"]]></ee:set-payload>
 						<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-"Account "++ vars.InputPayload.accountNum ++ " does not exist . 
+"Account "++ vars.inputPayload.accountNum ++ " does not exist . 
 Enter Valid Details"]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
 			</otherwise>
 		</choice>
+		<error-handler ref="global-apikit-erro_Handler" />
     </flow>
     <flow name="post:\createAccount:application\json:transaction-api-config">
         <flow-ref doc:name="common_emplementation_Sub_Flow" doc:id="7f50dfc9-936c-46dc-a1bf-5eaabe227f7f" name="common_emplementation_Sub_Flow"/>
 		<flow-ref doc:name="get_account_detail_subflow" doc:id="35014233-aec1-4ee3-8108-07f2c8fc06e3" name="get_account_detail_subflow"/>
 		<choice doc:name="Choice" doc:id="b87f219a-85d9-44e0-8a2b-bdee9824f62f" >
-			<when expression="#[(payload.custAccNum contains (vars.InputPayload.accountNum)) and (payload.bankName contains(vars.inputData.queryparams.bank))]">
+			<when expression="#[(payload.custAccNum contains (vars.inputPayload.accountNum)) and (payload.bankName contains(vars.inputData.queryparams.bank))]">
 				<ee:transform doc:name="Transform Message" doc:id="c7e93338-7677-4927-8a86-9a255c1a3100" >
 					<ee:message >
 						<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-"Account "++ vars.InputPayload.accountNum ++ " already exist"]]></ee:set-payload>
+"Account "++ vars.inputPayload.accountNum ++ " already exist"]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
 			</when>
@@ -189,26 +194,13 @@ output application/json
 output application/json
 ---
 {
-  status: "Account Created Successfully with Account Number " ++ vars.InputPayload.accountNum}]]></ee:set-payload>
+  status: "Account Created Successfully with Account Number " ++ vars.inputPayload.accountNum}]]></ee:set-payload>
             </ee:message>
         </ee:transform>
 			</otherwise>
 		</choice>
-		<error-handler >
-			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="15b71ab7-1cfe-4f9e-96a9-694234aecb22" type="DB:CONNECTIVITY, EMAIL:CONNECTIVITY">
-				<ee:transform doc:name="Transform Message" doc:id="927c919a-fd11-4fef-93fd-03e0dc68e06b" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-{
-	"message": "Connection failed"
-}]]></ee:set-payload>
-					</ee:message>
-					<ee:variables >
-					</ee:variables>
-				</ee:transform>
-			</on-error-propagate>
+		<error-handler ref="global-apikit-erro_Handler">
+			
 		</error-handler>
     </flow>
     <flow name="post:\withDraw:application\json:transaction-api-config">
@@ -219,7 +211,7 @@ output application/json
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == vars.InputPayload.bank)]]></ee:set-payload>
+payload filter ($.custAccNum==vars.inputPayload.accountNum and $.bankName == vars.inputData.queryparams.bank)]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
 		<choice doc:name="Choice" doc:id="a6c8f4a1-5e80-4dce-a9ca-850ad0771893" >
@@ -234,7 +226,7 @@ payload filter ($.custAccNum==vars.InputPayload.accountNum and $.bankName == var
 								<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-"Account "++ vars.InputPayload.accountNum ++ " temporarily blocked. Please visit 
+"Account "++ vars.inputPayload.accountNum ++ " temporarily blocked. Please visit 
 nearest Branch"]]></ee:set-payload>
 							</ee:message>
 						</ee:transform>
@@ -247,11 +239,12 @@ nearest Branch"]]></ee:set-payload>
 						<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
 ---
-"Account "++ vars.InputPayload.accountNum ++ " does not exist . 
+"Account "++ vars.inputPayload.accountNum ++ " does not exist . 
 Enter Valid Details"]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
 			</otherwise>
 		</choice>
+		<error-handler ref="global-apikit-erro_Handler" />
     </flow>
 </mule>

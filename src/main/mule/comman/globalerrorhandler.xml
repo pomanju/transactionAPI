@@ -98,6 +98,20 @@ output application/json
                     </ee:variables>
                 </ee:transform>
             </on-error-propagate>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="1c124a71-45c3-4f08-bf8d-554a2b1361f4" type="DB:CONNECTIVITY, EMAIL:CONNECTIVITY">
+				<ee:transform doc:name="Transform Message" doc:id="90c69959-733f-4439-bf9e-39fea6e2e33f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Connection failed"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
 	</error-handler>
 	
 </mule>
